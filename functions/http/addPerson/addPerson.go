@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 
+	"github/thisissoon/Go-Cloud-Functions-Examples/http/addPerson/storage"
+
 	"cloud.google.com/go/firestore"
 )
 
@@ -27,7 +29,7 @@ func init() {
 	client = c
 }
 
-func AddPerson(w http.ResponseWriter, r *http.Request) {
+func runAddPerson(w http.ResponseWriter, r *http.Request, s storage.Storage) {
 	decode := json.NewDecoder(r.Body)
 	var p Person
 	err := decode.Decode(&p)
@@ -36,15 +38,23 @@ func AddPerson(w http.ResponseWriter, r *http.Request) {
 	}
 	dbP, err := p.ToDBPerson()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error creating person: %v", err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		fmt.Fprintf(w, "incorrect time format use: 2006-01-02T15:04:05.000Z")
 		return
 	}
-	ref, err := dbP.SavePerson(r.Context(), client)
+
+	ref, err := s.SaveDoc(r.Context(), "people", dbP)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "error saving user: %v", err)
 	} else {
-		fmt.Fprintf(w, "successfully add user id: %v", ref.ID)
+		fmt.Fprintf(w, "successfully added user. Id: %v", ref.ID)
 	}
+}
+
+func AddPerson(w http.ResponseWriter, r *http.Request) {
+	store := storage.Store{
+		Client: client,
+	}
+	runAddPerson(w, r, store)
 }

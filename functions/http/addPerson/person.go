@@ -1,10 +1,7 @@
 package addPerson
 
 import (
-	"context"
 	"time"
-
-	"cloud.google.com/go/firestore"
 )
 
 type PersonDB struct {
@@ -13,14 +10,6 @@ type PersonDB struct {
 	Dob       time.Time `firestore:"dob"`
 	Postcode  string    `firestore:"postcode"`
 	CreatedAt time.Time `firestore:"createdAt"`
-}
-
-func (p *PersonDB) SavePerson(ctx context.Context, client *firestore.Client) (*firestore.DocumentRef, error) {
-	ref, _, err := client.Collection("people").Add(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-	return ref, nil
 }
 
 type Person struct {
