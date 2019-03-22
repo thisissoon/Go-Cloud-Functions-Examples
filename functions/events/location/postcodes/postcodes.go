@@ -1,4 +1,4 @@
-package location
+package postcodes
 
 import (
 	"encoding/json"
@@ -8,6 +8,10 @@ import (
 
 	"google.golang.org/genproto/googleapis/type/latlng"
 )
+
+type Location interface {
+	GetLatLong(postcode string) (*latlng.LatLng, error)
+}
 
 type LatLong struct {
 	Longitude float64 `json:"longitude"`
@@ -19,14 +23,16 @@ type Response struct {
 	Result LatLong `json:"result"`
 }
 
-func GetLatLong(postcode string) (*latlng.LatLng, error) {
-	apiUrl := "https://api.postcodes.io/postcodes/"
-	resp, err := http.Get(apiUrl + postcode)
+type Postcodes struct{}
+
+func (p Postcodes) GetLatLong(postcode string) (*latlng.LatLng, error) {
+	url := "https://api.postcodes.io/postcodes/" + postcode
+	resp, err := http.Get(url)
 	if err != nil {
-		return &latlng.LatLng{}, fmt.Errorf("error getting postcode: %v", err)
+		return &latlng.LatLng{}, fmt.Errorf("error reading json bytes: %v", err)
 	}
 	if resp.StatusCode != 200 {
-		return &latlng.LatLng{}, fmt.Errorf("error making postcode request. Status is :%v", resp.StatusCode)
+		return &latlng.LatLng{}, fmt.Errorf("error fetching location data status code is: %v", resp.StatusCode)
 	}
 	var res Response
 	body, err := ioutil.ReadAll(resp.Body)
@@ -34,6 +40,7 @@ func GetLatLong(postcode string) (*latlng.LatLng, error) {
 		return &latlng.LatLng{}, fmt.Errorf("error reading json bytes: %v", err)
 	}
 	defer resp.Body.Close()
+
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		return &latlng.LatLng{}, fmt.Errorf("error unmarshaling json body: %v", err)

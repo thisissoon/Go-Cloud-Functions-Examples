@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github/thisissoon/Go-Cloud-Functions-Examples/functions/events/location/updateLocation/postcodes"
+	"github/thisissoon/Go-Cloud-Functions-Examples/functions/events/location/updateLocation/storage"
+
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
 	"google.golang.org/genproto/googleapis/type/latlng"
@@ -80,7 +83,12 @@ func init() {
 	}
 }
 
-func UpdateLocation(ctx context.Context, e FirestoreEvent) error {
+func runUpdateLocation(
+	ctx context.Context,
+	e FirestoreEvent,
+	l postcodes.Location,
+	s storage.Storage,
+) error {
 	// Check if there's any data to process
 	// this works because fields is a pointer
 	if e.Value.Fields == nil {
@@ -99,7 +107,7 @@ func UpdateLocation(ctx context.Context, e FirestoreEvent) error {
 	newPostcode := e.Value.Fields.Postcode.StringValue
 	if oldPostcode != newPostcode {
 		// get location data for postcode
-		newLocation, err := GetLatLong(newPostcode)
+		newLocation, err := l.GetLatLong(newPostcode)
 		if err != nil {
 			return err
 		}
@@ -109,10 +117,18 @@ func UpdateLocation(ctx context.Context, e FirestoreEvent) error {
 			Path:  "location",
 			Value: newLocation,
 		}
-		_, err = client.Collection(collection).Doc(doc).Update(ctx, []firestore.Update{update})
+		err = s.UpdateDoc(ctx, collection, doc, update)
 		if err != nil {
 			return fmt.Errorf("Update error: %v", err)
 		}
 	}
 	return nil
+}
+
+func UpdateLocation(ctx context.Context, e FirestoreEvent) error {
+	p := postcodes.Postcodes{}
+	s := storage.Store{
+		Client: client,
+	}
+	return runUpdateLocation(ctx, e, p, s)
 }
